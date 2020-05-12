@@ -1,57 +1,67 @@
 const isEqual = require('lodash/isEqual')
 
-function deepDiff(o1, o2, path = '') {
-  if (!isEqual(o1, o2)) {
-    const keys1 = Object.keys(o1)
-    const keys2 = Object.keys(o2)
+function getArrayDiff({ newPointer, oldPointer }) {
+  const diff = new Set()
+  newPointer.forEach((item, index) => {
+    if (item !== oldPointer[index]) {
+      diff.add(item)
+    }
+  })
+  if (Array.isArray(oldPointer)) {
+    oldPointer.forEach((item, index) => {
+      if (item !== newPointer[index]) {
+        diff.add(item)
+      }
+    })
+  }
+  return Array.from(diff)
+}
 
-    const diffArray = keys1.map((key) => {
-      const pointer1 = o1[key]
-      const pointer2 = o2[key]
+/**
+ * A util that returns an Array containing the paths to diffs between two objects.
+ *
+ * @param {Object} newObject
+ * @param {Object} oldObject
+ * @param {number} path - A path to prepend to the diff path results.
+ *
+ * @return {Array} - An Array of strings of paths to the differences between the Objects.
+ */
+function deepDiff(newObject, oldObject, path = '') {
+  if (!isEqual(newObject, oldObject)) {
+    const newKeys = Object.keys(newObject)
 
-      if (!pointer2) {
-        return `${path}${key}`
+    const diffArray = newKeys.map((key) => {
+      const newPointer = newObject[key]
+      const oldPointer = oldObject[key]
+
+      if (newPointer.constructor.name === 'Object') {
+        return deepDiff(newPointer, oldPointer, `${path}${key}.`)
       }
 
-      if (pointer1.constructor.name === 'Object') {
-        return deepDiff(pointer1, pointer2, `${path}${key}.`)
-      }
-
-      if (Array.isArray(pointer1)) {
-        if (isEqual(pointer1, pointer2)) {
+      if (Array.isArray(newPointer)) {
+        if (isEqual(newPointer, oldPointer)) {
           return null
         }
 
-        const diff = new Set()
-        pointer1.forEach((item, index) => {
-          if (item !== pointer2[index]) {
-            diff.add(item)
-          }
-        })
-        if (Array.isArray(pointer2)) {
-          pointer2.forEach((item, index) => {
-            if (item !== pointer1[index]) {
-              diff.add(item)
-            }
-          })
-        }
-        return `${path}${key}[${Array.from(diff)}]`
+        const arrayDiff = getArrayDiff({ newPointer, oldPointer })
+        return `${path}${key}[${arrayDiff}]`
       }
 
-      if (!isEqual(pointer1, pointer2)) {
+      if (!isEqual(newPointer, oldPointer)) {
         return `${path}${key}`
       }
 
       return null
-    }).filter(item => !!item)
+    }).filter((item) => !!item)
 
-    if (keys1.length < keys2.length) {
-      const diff = keys2.filter((item, index) => {
-        return !o1[item]
-      })
-      diffArray.push(`${path}${diff}`)
-    }
-  
+    // Collect any paths for missing keys in either Object
+    const arrayDiff = getArrayDiff({ newPointer: Object.keys(newObject), oldPointer: Object.keys(oldObject) })
+    arrayDiff.forEach((item) => {
+      if (diffArray.includes(`${path}${item}`)) {
+        return
+      }
+      diffArray.push(`${path}${item}`)
+    })
 
     return diffArray.flat()
   }
