@@ -1,15 +1,18 @@
 const isEqual = require('lodash/isEqual')
 
+/**
+ * Return an Array of differences between two Arrays
+ */
 function getArrayDiff({ newPointer, oldPointer }) {
   const diff = new Set()
-  newPointer.forEach((item, index) => {
-    if (item !== oldPointer[index]) {
+  newPointer.forEach((item) => {
+    if (!oldPointer.includes(item)) {
       diff.add(item)
     }
   })
   if (Array.isArray(oldPointer)) {
-    oldPointer.forEach((item, index) => {
-      if (item !== newPointer[index]) {
+    oldPointer.forEach((item) => {
+      if (!newPointer.includes(item)) {
         diff.add(item)
       }
     })
@@ -27,7 +30,15 @@ function getArrayDiff({ newPointer, oldPointer }) {
  * @return {Array} - An Array of strings of paths to the differences between the Objects.
  */
 function deepDiff(newObject, oldObject, path = '') {
+  if (typeof newObject !== 'object' || typeof oldObject !== 'object') {
+    throw new Error(`${deepDiff.name} parameters must be Arrays or Objects, received: ${newObject} and ${oldObject}`)
+  }
   if (!isEqual(newObject, oldObject)) {
+
+    if (Array.isArray(newObject) && Array.isArray(oldObject)) {
+      return getArrayDiff({ newPointer: newObject, oldPointer: oldObject })
+    }
+
     const newKeys = Object.keys(newObject)
 
     const diffArray = newKeys.map((key) => {
